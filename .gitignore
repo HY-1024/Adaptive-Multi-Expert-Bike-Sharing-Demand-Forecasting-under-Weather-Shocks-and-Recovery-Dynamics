@@ -1,0 +1,33 @@
+# Local Python environment and caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Large local source downloads and regenerated runs
+data/raw/
+runs/
+
+# Temporary and legacy local outputs
+tmp/
+reports/
+results/
+notebooks/
+
+# LaTeX build products (the final PDF under output/pdf is retained)
+paper/*.aux
+paper/*.fdb_latexmk
+paper/*.fls
+paper/*.lof
+paper/*.log
+paper/*.lot
+paper/*.out
+paper/*.toc
+paper/*.xdv
+paper/main.pdf
+
+# Editor and OS metadata
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

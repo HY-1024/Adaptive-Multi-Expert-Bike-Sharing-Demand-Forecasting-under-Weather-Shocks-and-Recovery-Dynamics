@@ -1,0 +1,4 @@
+{
+  "url": "https://archive-api.open-meteo.com/v1/archive?latitude=38.9072&longitude=-77.0369&start_date=2023-01-01&end_date=2025-12-31&hourly=temperature_2m%2Crelative_humidity_2m%2Cprecipitation%2Crain%2Csnowfall%2Cwind_speed_10m&timezone=UTC",
+  "note": "Open-Meteo historical archive/reconstruction; not a historical forecast issued at prediction time."
+}

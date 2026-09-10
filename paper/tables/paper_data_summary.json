@@ -1,0 +1,13 @@
+{
+  "source": "Capital Bikeshare official monthly trip-history ZIPs with Open-Meteo historical weather reconstruction",
+  "model_frame_rows": 26130,
+  "first_issue_time_utc": "2023-01-08 05:00:00+00:00",
+  "last_issue_time_utc": "2025-12-31 22:00:00+00:00",
+  "departures_total": 17189278,
+  "rain_hours": 3507,
+  "online_event_count": 649,
+  "evaluation_event_cluster_count": 450,
+  "final_hours_per_horizon": 6599,
+  "final_prediction_rows": 26396,
+  "interval_method": "rolling empirical normalized absolute residual quantiles; only residuals with target_time <= issue_time; 2160-score window"
+}

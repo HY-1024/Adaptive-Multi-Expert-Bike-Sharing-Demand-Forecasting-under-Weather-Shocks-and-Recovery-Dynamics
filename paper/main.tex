@@ -1,0 +1,587 @@
+\documentclass[UTF8,11pt,a4paper]{ctexart}
+
+\usepackage[a4paper,top=2.35cm,bottom=2.35cm,left=2.55cm,right=2.55cm]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs,tabularx,longtable,array,multirow}
+\usepackage{graphicx,float,subcaption}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{microtype}
+
+\definecolor{accent}{HTML}{355070}
+\definecolor{accenttwo}{HTML}{2A9D8F}
+\definecolor{softgray}{HTML}{F3F5F7}
+\hypersetup{colorlinks=true,linkcolor=accent,citecolor=accent,urlcolor=accenttwo}
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.18em}
+\setlist{nosep,leftmargin=2.2em}
+\captionsetup{font=small,labelfont=bf}
+
+\pagestyle{fancy}
+\setlength{\headheight}{14pt}
+\fancyhf{}
+\fancyhead[L]{共享单车需求统计建模}
+\fancyhead[R]{六专家自适应融合框架}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newcommand{\Eone}{\textnormal{E1}}
+\newcommand{\Etwo}{\textnormal{E2}}
+\newcommand{\Ethree}{\textnormal{E3}}
+\newcommand{\Efour}{\textnormal{E4}}
+\newcommand{\Efive}{\textnormal{E5}}
+\newcommand{\Esix}{\textnormal{E6}}
+
+\begin{document}
+
+\begin{titlepage}
+  \thispagestyle{empty}
+  \centering
+  \vspace*{1.6cm}
+  {\zihao{2}\bfseries 统计模型与 Python 实践课程项目\par}
+  \vspace{2.2cm}
+  {\zihao{-1}\bfseries 面向天气冲击与恢复过程的\par}
+  \vspace{0.45cm}
+  {\zihao{-1}\bfseries 六专家自适应共享单车需求预测\par}
+  \vspace{0.9cm}
+  {\zihao{3}\color{accent} 需求动态、当前天气、恢复记忆与多类时序表示的互补建模\par}
+  \vfill
+  \begin{tabular}{rl}
+    姓名：& \rule{7cm}{0.4pt}\\[0.7em]
+    学号：& \rule{7cm}{0.4pt}\\[0.7em]
+    班级：& \rule{7cm}{0.4pt}\\[0.7em]
+    指导教师：& \rule{7cm}{0.4pt}
+  \end{tabular}
+  \vfill
+  {\zihao{-4}实验运行编号：\texttt{full\_expert\_20260910\_080942}\par}
+  \vspace{0.5cm}
+  {\zihao{-4}2026 年 9 月 10 日\par}
+\end{titlepage}
+
+\pagenumbering{Roman}
+
+\begin{abstract}
+本文从一个新的建模角度出发：共享单车使用量不是由单一机制产生，而是同时包含需求周期、当前天气、雨后恢复、局部时间模式、递归状态和跨日依赖。若让一个模型同时吸收全部特征和参数，不仅会增加训练复杂度，也可能使异质信息在同一参数空间中竞争，造成拟合不稳。为此，本文保持原研究问题和严格的发布时间边界（issue-time boundary）不变，采用分而专之（divide-and-specialize）的六专家系统：多输出负二项 XGBoost 需求专家、样条负二项当前天气专家、多尺度事件恢复负二项专家、轻量时序卷积网络（Temporal Convolutional Network, TCN）、轻量门控循环单元（Gated Recurrent Unit, GRU）和微型 Transformer（Tiny Transformer）。六个专家都输出未来 $h\in\{1,2,3,6\}$ 小时的完整需求预测；其角色不是把目标机械拆成六部分，而是用六种不同归纳偏置（inductive bias）对同一单车使用过程进行预测和拟合。各候选专家先在自身多种设计中完成前向筛选，再通过 E1 加单专家的消融实验（ablation study）验证独立价值；最终最佳配置共同进入状态自适应融合（state-adaptive fusion）。
+
+实验使用 Capital Bikeshare 2023--2025 年官方逐月行程记录聚合得到的 26,130 个可用发布小时，并配对 Open-Meteo 历史天气重建。模型选择和最终评价严格分离：2024 年上半年用于专家校准，2024 年下半年用于融合，2025 年第一季度用于 18 组候选配置筛选（screening），2025 年 4--12 月作为最终评价区间。最终每个时距包含 6,599 个评价小时。六专家完全体在 1、2、3、6 小时的平均绝对误差（Mean Absolute Error, MAE）分别为 75.648、98.051、117.206 和 130.774，四时距平均 MAE 为 105.420，相对固定的 E1 基座降低 31.20\%，也是本次所有已测试方案中最低的综合平均 MAE。单专家增量实验显示，E2、E3、E4、E5、E6 相对 E1 的四时距平均 MAE 分别改善 2.16\%、2.97\%、30.39\%、26.93\% 和 15.98\%，说明六类机制的独立预测价值差异明显。权重结果进一步表明，E4--E6 是多数时距的主要预测来源，而 E2 在短时冲击、E3 在 6 小时冲击中提供条件性补充。本文将这些权重解释为预测份额（predictive share），而非因果贡献。滚动经验区间（rolling empirical interval）在总体样本上接近 90\% 和 95\% 名义覆盖，但冲击状态仍明显欠覆盖，表明极端天气下的不确定性建模仍是主要不足。
+
+\textbf{关键词：}共享单车；多专家预测；负二项回归；XGBoost；TCN；GRU；Transformer；天气冲击；恢复过程；预测区间
+\end{abstract}
+
+\clearpage
+\tableofcontents
+\clearpage
+\listoffigures
+\clearpage
+\listoftables
+\clearpage
+
+\pagenumbering{arabic}
+
+\section{引言}
+
+\subsection{研究背景}
+
+共享单车需求具有显著的小时周期、工作日节律和季节变化，但在降雨、温度骤变和天气过程刚结束时，单纯依靠固定日历或单一历史滞后往往不足。本文首先从数据生成过程的异质性出发，把“预测并拟合单车使用情况”理解为多个视角共同描述同一完整目标：需求自身、当前天气、事件恢复和不同时间表示各自可能解释不同误差结构。对运营者而言，真正困难的不是证明天气“有影响”，而是在发布时刻 $t$ 只使用当时可获得的信息，预测未来 1、2、3、6 小时的完整需求，并说明不同天气阶段下误差和不确定性如何变化。
+
+原论文通过需求规律、当前天气和动态恢复三个专家建立了这一问题。该思路保留了结构化统计解释，但对复杂局部时序、递归记忆和长距离依赖的表达有限。另一种直接做法是构造一个“全特征单模型”，让同一模型同时接收全部需求、天气、事件和长窗口序列。本文把这一路径视为需要避免的高复杂度方案：不同机制共享同一参数空间会增加优化负担，也可能使强周期信号压制稀疏天气信号。不过，当前实验没有单独训练全特征单模型，因此这只是提出多专家设计的动机，而不是已经由对照实验确认的性能结论。本文不改变问题定义、数据边界和前向评价原则，而是在原有三种视角上增加 TCN、GRU 和 Tiny Transformer 三个轻量时序专家，并统一改为 $h\in\{1,2,3,6\}$ 的四时距输出。
+
+\subsection{研究问题}
+
+本文回答以下四个问题：
+\begin{enumerate}
+  \item 在严格的发布时间边界（issue-time boundary）下，需求自身动态、当前天气和天气历史分别能否提供可验证的增量信息？
+  \item 局部卷积、递归状态和注意力三种时序归纳偏置，是否能补充结构化统计专家遗漏的模式？
+  \item 六个完整预测经过校准和状态自适应融合后，在正常、冲击和恢复状态下表现如何？
+  \item 点预测之外，滚动经验预测区间在哪些状态下可靠，在哪些状态下仍然不足？
+\end{enumerate}
+
+\subsection{本文工作与口径调整}
+
+本文的主要工作不是提出新的树算法或深度网络，而是建立一个可审计的多视角统计预测流程：
+\begin{itemize}
+  \item 提出分而专之（divide-and-specialize）的建模视角，以多个小型完整预测器代替一个吞并全部参数的单体模型；
+  \item 保留固定的 E1 多输出负二项 XGBoost，只把输出时距更新为 1、2、3、6 小时；
+  \item 为 E2--E6 分别准备多种候选设计，通过开发期筛选确定每类专家的最佳配置，再通过 E1 与单个候选专家的增量消融评估其独立价值；
+  \item 使用最终评价区间之前的数据完成配置筛选、专家校准和融合权重学习；
+  \item 在完全体（full model）中保留全部六个专家，但不再强制每个权重至少为 10\%。当前实现采用 softmax 非负权重，因此无效专家可以得到接近零的预测份额（predictive share）；
+  \item 将“天气效应”统一表述为条件关联，将融合权重统一表述为预测份额，不进行因果或机制强度外推；
+  \item 在最新六专家预测上重新生成数据图、消融图、权重图、相关性图、事件窗口图和滚动区间图。
+\end{itemize}
+
+\section{相关方法与建模定位}
+
+梯度提升树通过逐步拟合损失函数的负梯度构造加法模型\cite{friedman2001}，XGBoost 在正则化和工程实现上进一步提高了可扩展性\cite{chen2016}。本文的 E1 使用 XGBoost 的多输出树接口，并以负二项计数似然构造自定义目标。负二项模型允许方差随均值二次增长，适合小时需求中常见的过度离散\cite{cameron2013}。
+
+结构化天气专家借鉴广义加性模型的低自由度平滑思想\cite{hastie1990}，恢复专家则使用多个指数衰减尺度表达事件结束后的持续关联。深度时序部分分别采用 TCN 的因果膨胀卷积\cite{bai2018}、GRU 的门控递归状态\cite{cho2014} 和 Transformer 的自注意力结构\cite{vaswani2017}。这些网络均控制在 8 万参数以内，其目的不是替代结构化统计解释，而是检验不同时间表示是否提供互补预测误差。
+
+多专家融合与经典专家混合（mixture-of-experts）思路一致\cite{jacobs1991,jordan1994}，但本文不训练复杂门控网络（gating network），而是在预先定义的发布状态内学习低维非负权重。预测区间使用按发布时间顺序更新的经验残差分位数；它与保形预测（conformal prediction）的残差校准思想相关\cite{angelopoulos2023}，但由于配置筛选与初始残差池并非完全独立，本文不宣称严格的有限样本覆盖保证。
+
+\section{数据与问题定义}
+
+\subsection{数据来源与新数据概况}
+
+需求来自 Capital Bikeshare 官方发布的 2023--2025 年 36 个逐月行程压缩包\cite{capitaldata}。每条行程按出发时间聚合为全系统小时出发量。天气来自 Open-Meteo 历史天气接口的小时重建\cite{openmeteo}，包含温度、相对湿度、降雨和风速。该天气数据是回溯代理，不等同于当时实际发布的天气预报，因此本文评价的是严格历史信息边界下的回溯建模能力，不直接代表线上天气预报系统的业务表现。
+
+经过 UTC 统一、夏令时处理、完整小时索引、滞后构造和四时距标签对齐后，得到 26,130 个可用发布小时，覆盖 2023-01-08 05:00 UTC 至 2025-12-31 22:00 UTC，总出发量为 17,189,278。数据中发布时降雨小时为 3,507，在线解析得到 649 个雨事件编号和 450 个评价事件簇。
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.98\textwidth]{assets/01_data_overview.png}
+  \caption{2023--2025 年小时需求与历史天气重建的月度概况。需求季节性和温度季节性高度同步，因此图形只支持描述性关联，不支持因果结论。}
+  \label{fig:data-overview}
+\end{figure}
+
+\subsection{预测任务与发布时间}
+
+在小时 $t$ 的出发量聚合完成后发布预测，目标为
+\begin{equation}
+  Y_{t+h},\qquad h\in\{1,2,3,6\}.
+\end{equation}
+可用信息集合记为 $\mathcal{F}_t$。所有需求、天气和事件变量只能使用到 $t$；目标小时、星期、月份、节假日等日历变量可提前知道。任何包含 $Y_{t+h}$ 的训练行只有在最晚标签 $Y_{t+6}$ 到达后才能进入训练集。模型输出
+\begin{equation}
+  \widehat\mu_{t,h}=\mathbb{E}(Y_{t+h}\mid\mathcal{F}_t).
+\end{equation}
+
+\subsection{发布状态}
+
+状态由发布时可见的在线雨事件解析器产生：
+\begin{itemize}
+  \item \textbf{正常状态（normal）：}发布时无进行中的降雨，且不在已确认事件后的恢复窗口；
+  \item \textbf{冲击状态（shock）：}发布时降雨正在进行；
+  \item \textbf{恢复状态（recovery）：}最近雨事件已经结束，且发布时仍处于预设恢复窗口。
+\end{itemize}
+状态只决定融合权重，不使用目标时刻的真实天气，也不利用未来事件结束时间或未来累计雨量。
+
+\subsection{前向时间协议}
+
+\begin{table}[H]
+\centering
+\caption{配置筛选、校准、融合与最终评价的连续前向切分}
+\label{tab:splits}
+\begin{tabularx}{0.92\textwidth}{lllX}
+\toprule
+阶段 & 发布时段 & 每时距样本 & 用途\\
+\midrule
+校准拟合（calibration fit） & 2024-01 至 2024-06 & 4,368 & 拟合每个专家的低维偏差校准\\
+融合拟合（fusion fit） & 2024-07 至 2024-12 & 4,416 & 学习全局及三状态融合权重\\
+筛选开发（screening dev） & 2025-01 至 2025-03 & 2,160 & 在 18 组候选中选择每类专家配置\\
+最终评价（final evaluation） & 2025-04 至 2025-12 & 6,599 & 固定配置后的最终回溯评价\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+这种切分使最终评价不参与结构和超参数选择。必须指出，本次筛选只使用一个随机种子，尚未完成方案中建议的 Top-3 三随机种子确认；因此深度专家之间的小差异仍需稳定性实验验证。
+
+\section{六专家完整预测框架（six-expert full forecasting framework）}
+
+\subsection{共同输出尺度与负二项建模}
+
+六个专家都对同一完整目标建模。多专家的目的不是减少输入信息总量，而是把异质信息和归纳偏置分配给不同的小型学习器，降低单个模型同时拟合所有机制的负担。对于专家 $k$，
+\begin{equation}
+  Y_{t+h}\mid\mathcal{F}_t \sim \mathrm{NB}(\mu^{(k)}_{t,h},\alpha^{(k)}_h),
+  \qquad \mathrm{Var}(Y_{t+h}\mid\mathcal{F}_t)=\mu^{(k)}_{t,h}+\alpha^{(k)}_h(\mu^{(k)}_{t,h})^2.
+\end{equation}
+深度专家共享一个时序骨干网络（temporal backbone），并设置四个时距输出头（horizon heads）。结构化专家按时距拟合，E1 则通过一个多输出树联合生成四维对数均值。
+
+\begin{table}[H]
+\centering
+\caption{六个专家的独立建模贡献与最终选中配置}
+\label{tab:experts}
+\small
+\begin{tabularx}{\textwidth}{c p{3.0cm} p{4.0cm} X}
+\toprule
+ID & 最终配置 & 专属贡献 & 主要输入和归纳偏置\\
+\midrule
+E1 & Multi-output NB-XGBoost & 需求自身动态与四时距联合基座 & 需求滞后、差分、滚动统计、目标日历；不直接输入天气\\
+E2 & spline\_only & 当前天气的可解释非线性响应 & 发布时温度、降雨、湿度、风速的三次样条与公共控制\\
+E3 & multi\_scale & 已结束雨事件的多尺度恢复记忆 & 事件累计雨量在 $\tau=3,12,36$ 小时尺度的衰减及在线事件字段\\
+E4 & TCN, $L=72$, 32 通道, 3 块 & 局部因果、多尺度卷积模式 & 72 小时需求--天气序列，膨胀率 $1,2,4$\\
+E5 & GRU, $L=72$, 隐藏维 64, 1 层 & 递归隐状态与顺序记忆 & 72 小时需求--天气序列，单层门控递归\\
+E6 & Transformer, $L=168$, $d=32$, 1 层, 2 头 & 跨较远时刻的直接依赖 & 168 小时序列、可学习位置编码与轻量自注意力\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{E1：需求自身动态贡献}
+
+E1 保留原论文的多输出负二项 XGBoost。输入包含 $0,1,2,3,6,24,48,168$ 小时需求滞后、短期变化量、3/24/168 小时滚动均值和 24 小时滚动波动，以及四个目标时刻的日历特征。模型联合输出
+\begin{equation}
+  \bm\eta_t=(\eta_{t,1},\eta_{t,2},\eta_{t,3},\eta_{t,6}),\qquad
+  \mu^{(1)}_{t,h}=\exp(\eta_{t,h}).
+\end{equation}
+E1 的贡献是提供只依赖需求自身变化和周期规律的强基座。它不能解释为“无天气时的反事实需求”，因为历史需求本身已经包含过去天气影响。
+
+\subsection{E2：当前天气非线性贡献}
+
+E2 候选族使用温度、$\log(1+\text{rain})$、湿度和风速的三次样条，并测试温湿、雨风和通勤交互。开发期最终选中 \texttt{spline\_only}，说明在当前样本中额外交互项未带来更好的综合选择分数。其形式可写为
+\begin{equation}
+  \log\mu^{(2)}_{t,h}=\bm c_{t,h}^{\top}\bm\beta_h+s_T(T_t)+s_R(\log(1+R_t))+s_H(H_t)+s_V(V_t).
+\end{equation}
+E2 的独立贡献是把发布时天气的条件关联从人工折点升级为平滑非线性函数，同时保持低维可解释性。它不读取历史天气序列。
+
+\subsection{E3：多尺度事件恢复贡献}
+
+E3 保留在线事件解析边界，只使用发布时已经确认的信息。对已结束事件的累计雨量 $C_t$ 和雨停后经过时间 $S_t$，候选模型构造
+\begin{equation}
+  E^{C,\tau}_{t,h}=\log(1+C_t)\exp\left[-\frac{\min(S_t+h,72)}{\tau}\right],
+  \qquad \tau\in\{3,12,36\}.
+\end{equation}
+筛选后采用 \texttt{multi\_scale} 配置，即保留三个累计雨量衰减尺度，但未保留连续 72 小时雨序列记忆和事件时长交互。E3 的贡献因此应准确表述为“多尺度已结束事件恢复表示”，而不是声称最终模型包含所有候选恢复特征。
+
+\subsection{E4：TCN 局部多尺度贡献}
+
+E4 读取过去 72 小时的需求、温度、降雨、湿度、风速、冲击/恢复指示、事件持续字段和周期编码。三层因果卷积块的膨胀率为 $1,2,4$，每块采用残差连接：
+\begin{equation}
+  \bm z^{(l)}=\bm z^{(l-1)}+mathrm{Dropout}\{\mathrm{ReLU}(\mathrm{Conv}_{d_l}(\bm z^{(l-1)}))\}.
+\end{equation}
+E4 的贡献是学习人工滞后和事件衰减没有直接指定的局部、多尺度时序形状。最终配置包含 9,956 个参数。
+
+\subsection{E5：GRU 顺序状态贡献}
+
+E5 使用与 E4 相同的 72 小时序列字段，但将历史压缩为门控递归状态：
+\begin{equation}
+  \bm h_t=\mathrm{GRU}(\bm x_{t-71:t}),\qquad
+  \bm\eta_t=\bm W\bm h_t+\bm b.
+\end{equation}
+其独立贡献是检验显式递归状态是否适合表示需求和天气过程的顺序累积。最终配置为单层、隐藏维度 64，共 15,812 个参数。
+
+\subsection{E6：Tiny Transformer 长距离依赖贡献}
+
+E6 采用 168 小时窗口，每小时构成一个需求--天气--事件词元（token）。线性投影和可学习位置编码后，通过一层双头 Transformer 编码器（encoder）：
+\begin{equation}
+  \bm Z=\mathrm{Encoder}(\bm X\bm W_e+\bm P),\qquad
+  \bm\eta_t=\bm W_o\bm Z_{t}+\bm b_o.
+\end{equation}
+E6 的贡献是允许一周窗口内相隔较远的时间点直接交互，而不依赖卷积层数或递归传递。最终配置 $d_{\text{model}}=32$、FFN=64、1 层、2 头，共 14,564 个参数。
+
+\subsection{专家校准、状态融合与预测份额}
+
+每个专家先在 calibration fit 上进行低维偏差校准：
+\begin{equation}
+  \widetilde\mu^{(k)}_{t,h}=\max\{0,a_{k,h}+b_{k,h}\mu^{(k)}_{t,h}\}.
+\end{equation}
+在 fusion fit 上学习全局权重，再对每个状态学习向全局权重收缩的状态权重：
+\begin{align}
+  \widehat\mu^{(F)}_{t,h}&=\sum_{k=1}^{6}w_{h,s_t,k}\widetilde\mu^{(k)}_{t,h},\\
+  \min_{\bm w}\quad &\frac{1}{n_s}\sum_{t:s_t=s}\left(Y_{t+h}-\sum_{k=1}^{6}w_k\widetilde\mu^{(k)}_{t,h}\right)^2
+  +\lambda\lVert\bm w-\bm w_h^{(G)}\rVert_2^2,\\
+  \text{s.t.}\quad &w_k\ge 0,\qquad \sum_{k=1}^{6}w_k=1.
+\end{align}
+实现中使用 softmax 参数化保证约束，并取 $\lambda=0.5$。因此“六个专家都被纳入完全体（full model）”不等于“每个专家必须拿到固定最低份额”；接近零的权重正是模型对冗余信息的收缩。权重只表示特定时距和状态下的预测组合份额（predictive share），不是天气或需求机制的因果贡献率。
+
+\subsection{滚动经验预测区间}
+
+对完整融合预测定义异方差归一化残差
+\begin{equation}
+  r_{t,h}=\frac{|Y_{t+h}-\widehat\mu^{(F)}_{t,h}|}{\max\{\sqrt{\widehat\mu^{(F)}_{t,h}},25\}}.
+\end{equation}
+在发布时刻 $t$，只纳入目标时间不晚于 $t$ 的既往残差，并保留最近 2,160 个分数。令 $q_{t,h,\gamma}$ 为经验 $\gamma$ 分位数，则
+\begin{equation}
+  \left[\max\{0,\widehat\mu^{(F)}_{t,h}-q_{t,h,\gamma}s_{t,h}\},
+  \widehat\mu^{(F)}_{t,h}+q_{t,h,\gamma}s_{t,h}\right],
+  \quad s_{t,h}=\max\{\sqrt{\widehat\mu^{(F)}_{t,h}},25\}.
+\end{equation}
+该区间是随时间更新的经验不确定性描述。由于初始分数池来自已经参与配置筛选的开发期，它不具备严格的分布无关覆盖保证。
+
+\section{实验设置}
+
+\subsection{候选筛选与完全体训练}
+
+E1 是固定需求基座，不参与结构搜索。E2 和 E3 各测试 3 个结构化配置；E4、E5、E6 各测试 4 个轻量配置，共 18 组。第一步是在每类专家自己的多种设计角度中，使用 2025 年第一季度开发期选择最佳配置。第二步只比较 E1、E1+E2、E1+E3、E1+E4、E1+E5、E1+E6，以消融实验识别每个专家相对固定基座的独立增量价值。第三步将六类专家各自的最佳配置重新训练并共同放入完全体融合，完成总的预测拟合。
+
+当前正式运行使用 PyTorch 2.14.0 CPU 版本，\texttt{device=cpu}，自动混合精度（Automatic Mixed Precision, AMP）未启用。因而本文不再沿用旧论文“使用 RTX 4060/CUDA”的实现口径。深度模型参数规模和窗口仍符合单卡友好设计，但本轮工程时间只能解释为本机 CPU 实测。
+
+\begin{table}[H]
+\centering
+\caption{完全体中六个专家的工程规模}
+\label{tab:engineering}
+\begin{tabular}{lrrrr}
+\toprule
+专家 & 参数量 & 训练时间/s & 推理时间/s & 峰值 GPU 显存/MB\\
+\midrule
+E1 NB-XGBoost & -- & -- & -- & --\\
+E2 spline\_only & -- & -- & -- & --\\
+E3 multi\_scale & -- & -- & -- & --\\
+E4 TCN & 9,956 & 219.987 & 0.225 & 0\\
+E5 GRU & 15,812 & 392.004 & 0.935 & 0\\
+E6 Tiny Transformer & 14,564 & 1,661.360 & 1.015 & 0\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+结构化专家的计时字段在当前运行中被记录为 0，而非真实零耗时，因此表中改记为“--”。这也是本文重新规划结果口径的一部分：缺失的工程测量不作数值性结论。
+
+\subsection{评价指标}
+
+点预测使用
+\begin{align}
+  \mathrm{MAE}&=\frac{1}{n}\sum_{i=1}^{n}|y_i-\widehat y_i|,\\
+  \mathrm{RMSE}&=\sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i-\widehat y_i)^2}.
+\end{align}
+同时按正常（normal）、冲击（shock）、恢复（recovery）分组。区间报告经验覆盖率和平均宽度。专家互补性通过最终期专家残差相关系数衡量，但相关性不用于事后修改已冻结的最终配置。
+
+\section{单专家增量贡献}
+
+\begin{table}[H]
+\centering
+\caption{每个候选专家单独加入 E1 后的最终期增量价值}
+\label{tab:incremental}
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+模型 & 1h MAE & 2h MAE & 3h MAE & 6h MAE & 平均 MAE & 相对 E1 改善\\
+\midrule
+E1 only & 130.964 & 143.024 & 165.942 & 173.002 & 153.233 & --\\
+E1+E2 Weather & 105.030 & 144.064 & 168.051 & 182.537 & 149.921 & 2.16\%\\
+E1+E3 Recovery & 104.626 & 143.407 & 166.750 & 179.929 & 148.678 & 2.97\%\\
+E1+E4 TCN & 78.756 & 99.890 & 118.169 & 129.846 & 106.665 & 30.39\%\\
+E1+E5 GRU & 80.401 & 104.157 & 122.759 & 140.543 & 111.965 & 26.93\%\\
+E1+E6 Transformer & 106.175 & 121.432 & 138.529 & 148.851 & 128.747 & 15.98\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.98\textwidth]{assets/02_incremental_ablation.png}
+  \caption{固定 E1 后分别加入一个候选专家的四时距 MAE。E4 和 E5 带来最大整体改善；E2 与 E3 的主要增益集中在 1 小时。}
+  \label{fig:incremental}
+\end{figure}
+
+表~\ref{tab:incremental}直接回应“每个专家自己的贡献”。E2 将 1 小时 MAE 降低约 19.80\%，但在 2--6 小时略有恶化，因此其价值更接近短时天气校正。E3 的模式相似，1 小时改善约 20.11\%，长时距优势不足。E4 在全部时距都显著改善，是最强的单一增量专家；E5 次之；E6 虽弱于 TCN 和 GRU，但仍在四个时距提供一致改善。这些结论来自 E1 加单专家的完整重训和融合，而不是从完全体权重反推。
+
+\section{六专家完全体结果}
+
+\subsection{总体点预测}
+
+\begin{table}[H]
+\centering
+\caption{六专家完全体在最终评价区间的总体点预测结果}
+\label{tab:full-overall}
+\begin{tabular}{rrrrr}
+\toprule
+时距/h & 样本数 & MAE & RMSE & 目标均值\\
+\midrule
+1 & 6,599 & 75.648 & 116.867 & 815.271\\
+2 & 6,599 & 98.051 & 155.948 & 815.286\\
+3 & 6,599 & 117.206 & 187.421 & 815.291\\
+6 & 6,599 & 130.774 & 205.320 & 815.376\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+四时距平均 MAE 为 105.420，相对 E1-only 的 153.233 降低 31.20\%，并取得本次已测试配置中的最佳综合平均表现（best overall average）。与最强双专家 E1+E4 相比，完全体在 1、2、3 小时分别进一步降低 3.95\%、1.84\% 和 0.81\%，但在 6 小时恶化 0.72\%。因此，本文所说的“best of all”严格指已测试方案中的四时距平均 MAE 最低，不能解释为每个时距都绝对最好；更准确的结论是完全体提高了短中时距表现，同时在 6 小时付出很小代价。
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{assets/09_model_comparison.png}
+  \caption{固定 E1 基座、最强双专家 E1+TCN 与六专家完全体的比较。}
+  \label{fig:model-comparison}
+\end{figure}
+
+\subsection{状态分组误差}
+
+\begin{table}[H]
+\centering
+\caption{六专家完全体按发布状态分组的 MAE}
+\label{tab:state-mae}
+\begin{tabular}{lrrrrr}
+\toprule
+发布状态 & 样本数/时距 & 1h & 2h & 3h & 6h\\
+\midrule
+正常（normal） & 3,074 & 65.794 & 83.634 & 101.309 & 111.863\\
+冲击（shock） & 1,018 & 101.533 & 138.050 & 158.843 & 184.454\\
+恢复（recovery） & 2,507 & 77.220 & 99.486 & 119.790 & 132.165\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+冲击状态在所有时距下最难，四时距平均 MAE 为 145.720；恢复状态为 107.165，正常状态为 90.650。天气冲击不仅提高点误差，也会在后续区间结果中表现为欠覆盖。
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{assets/03_full_state_mae.png}
+  \caption{六专家完全体按发布状态和时距分组的 MAE。}
+  \label{fig:state-mae}
+\end{figure}
+
+\subsection{六专家预测份额}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{assets/04_global_weights.png}
+  \caption{六专家完全体的全局预测权重。E4--E6 在多数时距占据主要份额。}
+  \label{fig:global-weights}
+\end{figure}
+
+全局权重显示：1 小时主要由 E5（0.469）、E4（0.271）和 E6（0.129）构成，同时 E2 保留 0.094；2 小时主要由 E4（0.406）、E6（0.341）和 E5（0.254）构成；3 小时和 6 小时的最大全局权重均为 E6，分别为 0.411 和 0.408。E1、E2、E3 在较长时距的全局权重接近零，表明在当前完整专家池中，它们的平均预测已被时序专家替代，但仍可能在特定状态提供局部补充。
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\textwidth]{assets/05_state_weights_heatmap.png}
+  \caption{各时距、各发布状态下的六专家权重。数值表示预测份额，不表示因果贡献。}
+  \label{fig:state-weights}
+\end{figure}
+
+状态权重更能体现每个专家在完全体中的条件性贡献：
+\begin{itemize}
+  \item E1 在 1h/2h 冲击状态保留 0.108/0.161，说明需求基座在短时降雨中仍有稳定锚定作用；
+  \item E2 在 1h 冲击达到 0.274，在 3h 冲击达到 0.155，支持其“短时当前天气补充”的定位；
+  \item E3 在大多数状态接近零，但在 6h 冲击达到 0.180，显示恢复/事件表示仅在特定长时冲击样本中被使用；
+  \item E4 在 2h normal/recovery 和 3h/6h recovery 中约为 0.41--0.43，承担稳定的局部模式预测；
+  \item E5 在 1h normal 为 0.529，在 2h shock 为 0.356，在 6h normal 为 0.429，体现递归状态对短时和正常周期的优势；
+  \item E6 在 3h recovery 为 0.441，在 6h shock 为 0.706，长窗口注意力在更长时距和复杂冲击下占据最大份额。
+\end{itemize}
+
+\subsection{残差互补性}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.94\textwidth]{assets/06_residual_correlations.png}
+  \caption{开发期选中配置在最终评价期的专家残差相关系数。}
+  \label{fig:residual-corr}
+\end{figure}
+
+E2 与 E3 在四个时距的残差相关系数为 0.986--0.991，说明两种结构化天气视角在当前数据上高度重叠。这解释了它们在完全体中的平均权重偏低。相比之下，E4/E5 与 E2/E3 在 3--6 小时的相关系数多在 0.35--0.44，体现更明显的误差互补。E4、E5、E6 之间相关性为 0.59--0.79，虽有共享时序信息，但尚未达到 0.95 的近重复阈值。
+
+\subsection{典型天气窗口与月度稳定性}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.98\textwidth]{assets/07_event_window.png}
+  \caption{代表性天气事件窗口中的 1 小时六专家预测与滚动 95\% 经验区间。背景状态按发布时信息确定。}
+  \label{fig:event-window}
+\end{figure}
+
+图~\ref{fig:event-window}显示完全体能够跟随显著日周期与多数峰谷，但在突然高峰和连续冲击窗口仍可能出现偏差。该图只展示一个事件簇，不能替代全部事件的分组统计。
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.96\textwidth]{assets/10_monthly_error.png}
+  \caption{最终评价期内六专家模型的月度 MAE。第一个本地月份点来自 UTC 切分边界附近的少量时刻。}
+  \label{fig:monthly-error}
+\end{figure}
+
+误差随月份明显变化，说明单一总体平均数不能完全代表系统稳定性。5 月和 9 月相对较难，8 月和 12 月较容易；这种差异可能同时来自需求水平、事件构成和气象分布变化，本文不作单一原因归因。
+
+\section{滚动经验预测区间}
+
+\begin{table}[H]
+\centering
+\caption{六专家预测的总体滚动经验区间表现}
+\label{tab:interval}
+\begin{tabular}{rrrrrr}
+\toprule
+时距/h & 90\% 覆盖 & 90\% 平均宽度 & 95\% 覆盖 & 95\% 平均宽度\\
+\midrule
+1 & 0.902 & 320.263 & 0.951 & 416.319\\
+2 & 0.902 & 409.690 & 0.947 & 537.560\\
+3 & 0.900 & 490.621 & 0.947 & 639.836\\
+6 & 0.902 & 533.909 & 0.950 & 739.963\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+总体覆盖接近名义水平，但分状态结果揭示结构性不足。90\% 区间在 shock 状态的覆盖率随时距从 0.824 降至 0.806；95\% 区间的冲击覆盖仅为 0.894、0.883、0.875、0.883。与此同时，normal 状态的 95\% 覆盖约为 0.967--0.971，存在保守倾向。一个统一滚动分位数无法同时适配正常和冲击状态，是后续需要重点改进的问题。
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.97\textwidth]{assets/08_interval_coverage.png}
+  \caption{总体、冲击和恢复状态的滚动经验区间覆盖率。虚线为名义水平。}
+  \label{fig:interval-coverage}
+\end{figure}
+
+\section{讨论}
+
+\subsection{六个专家各自贡献了什么}
+
+E1 提供了需求惯性和日周周期基座，是所有增量比较的固定参照；它在完全体平均权重较小，不等于它在实验设计中不重要。E2 通过样条提供可解释的发布时天气非线性，主要价值集中在短时冲击。E3 将原固定 12 小时恢复尺度扩展到 3、12、36 小时，虽然与 E2 残差高度相关，但在 6 小时冲击状态获得条件性权重。E4 用因果膨胀卷积提供最强的单专家增量改善。E5 用门控递归状态在 1 小时和正常状态占据主要份额。E6 用一周窗口注意力补充较长时距，并在 6 小时冲击中成为主导。
+
+因此，“每个专家有自己的贡献”应包含两个层次：第一，结构层面每个专家具有不同的信息视角或时序归纳偏置；第二，证据层面其贡献必须由增量误差、残差互补性和完全体条件权重共同描述。不能仅凭专家名称假定其一定有效，也不能把接近零的权重改写成显著贡献。
+
+\subsection{原研究问题得到怎样的支持}
+
+第一，需求历史、当前天气和恢复事件都能在特定时距提供预测信息，但天气/恢复的增量高度集中在 1 小时。第二，三种学习型时序专家都带来明显整体改善，其中 TCN 的单专家增量最大。第三，六专家完全体在短中时距优于最强双专家，但在 6 小时略差，说明更多专家带来的收益并非单调。第四，总体经验区间接近名义覆盖，但冲击状态系统性欠覆盖，说明极端状态的不确定性仍未被充分刻画。
+
+\subsection{天气关联与恢复过程的解释边界}
+
+E2 的样条项和 E3 的多尺度衰减描述的是控制公共需求与日历变量后的条件关联。历史天气来自回溯重建，且需求与季节、通勤、节假日共同变化，因此本文不使用“温度导致需求上升”“降雨造成固定恢复时长”等因果表述。融合权重同样不是机制贡献率：例如 E6 在 6h shock 的 0.706 只表示该状态样本的加权预测主要依赖其输出。
+
+\subsection{为什么保留六专家而不是只保留 E1+TCN}
+
+如果目标只是在当前最终期追求简洁，E1+TCN 已经是非常有竞争力的简化模型。本文保留六专家完全体，是因为研究问题本身要求同时观察当前天气、恢复记忆、局部卷积、递归状态和注意力依赖在不同状态下如何被使用。各专家先在自己的候选设计中筛选，再经过独立增量消融，最后才共同拟合；这一流程避免了先把所有参数塞进单体模型、再事后解释特征的重要性。完整模型取得最佳综合平均 MAE，但 6 小时略有代价。由此得到的是一个透明的复杂度--性能权衡，而不是“专家越多越好”的结论。
+
+\section{局限与后续改进}
+
+\begin{enumerate}
+  \item \textbf{天气可用性：}Open-Meteo 为历史重建，不是实际发布预报。线上评价需要保存每个发布时刻真实可用的天气预报版本。
+  \item \textbf{单随机种子：}18 组筛选和完全体训练均只使用一个种子，尚不能量化深度专家的训练波动。
+  \item \textbf{未完成去一专家消融（leave-one-expert-out）：}当前只有 E1 加单专家的增量消融和六专家完全体，没有重新训练完整的去一专家模型，因此完全体中的边际替代关系仍不完整。
+  \item \textbf{融合目标：}权重以均方误差学习，可能与论文主要报告的 MAE 不完全一致；后续可比较 MAE、Huber 和状态加权目标。
+  \item \textbf{区间欠覆盖：}统一滚动分位数对 shock 状态不足，应分别学习状态分位数，并通过事件簇 bootstrap 或在线分位数更新评估。
+  \item \textbf{结构化专家冗余：}E2 与 E3 残差相关接近 0.99。后续应通过更严格的事件定义、连续雨历史和不同公共控制，检验恢复专家能否产生真正独立的信息。
+  \item \textbf{工程统计不完整：}结构化专家的真实训练/推理时间和内存没有被记录，GPU 也未启用，不能据此比较所有六个专家的计算效率。
+\end{enumerate}
+
+\section{结论}
+
+本文在不改变原始研究问题和发布时间边界的前提下，从单车使用过程包含异质机制这一新角度出发，把共享单车需求预测从三专家更新为六专家完整预测框架。六个专家分别承担需求动态、当前天气非线性、多尺度恢复、局部卷积时序、递归状态记忆和长距离注意力六种建模贡献。各类专家先在多种候选设计中筛选最佳配置，再通过独立增量消融检验贡献，最后共同进入完全体拟合。该流程用多个专门化模型降低单一模型吞并全部参数的负担，同时避免凭专家名称预设其有效性。
+
+在 Capital Bikeshare 2025 年 4--12 月的最终评价中，六专家完全体在 1、2、3、6 小时的 MAE 为 75.648、98.051、117.206、130.774，四时距平均相对 E1 基座改善 31.20\%，取得全部已测试配置中的最低平均 MAE。E4--E6 提供主要整体增益，E2 和 E3 在特定冲击状态保留条件性价值。滚动区间的总体覆盖接近名义水平，但冲击状态仍明显欠覆盖。由此，当前最稳妥的结论不是“六专家在每个时距全面获胜”，而是：分而专之的多专家建模在综合平均意义上取得 best-of-all 拟合结果，多种时序表示显著补充了固定需求基座，结构化天气与恢复专家提供了可解释但局部的条件信息。未来工作应把重点放在多随机种子稳定性、去一专家消融、全特征单模型对照、真实天气预报可用性和冲击状态区间校准上。
+
+\appendix
+\section{完全体状态权重明细}
+
+\begin{longtable}{rrlrrrrrr}
+\caption{六专家在各时距和发布状态下的预测权重}\label{tab:weights-full}\\
+\toprule
+$h$ & 状态 & E1 & E2 & E3 & E4 & E5 & E6\\
+\midrule
+\endfirsthead
+\toprule
+$h$ & 状态 & E1 & E2 & E3 & E4 & E5 & E6\\
+\midrule
+\endhead
+1 & normal & 0.047 & 0.037 & 0.000 & 0.283 & 0.529 & 0.105\\
+1 & shock & 0.108 & 0.274 & 0.000 & 0.192 & 0.354 & 0.072\\
+1 & recovery & 0.005 & 0.125 & 0.000 & 0.264 & 0.405 & 0.201\\
+2 & normal & 0.000 & 0.000 & 0.000 & 0.432 & 0.266 & 0.303\\
+2 & shock & 0.161 & 0.115 & 0.000 & 0.184 & 0.356 & 0.184\\
+2 & recovery & 0.000 & 0.000 & 0.000 & 0.428 & 0.163 & 0.409\\
+3 & normal & 0.000 & 0.000 & 0.000 & 0.280 & 0.316 & 0.404\\
+3 & shock & 0.000 & 0.155 & 0.000 & 0.302 & 0.268 & 0.275\\
+3 & recovery & 0.000 & 0.012 & 0.000 & 0.410 & 0.137 & 0.441\\
+6 & normal & 0.000 & 0.000 & 0.000 & 0.247 & 0.429 & 0.324\\
+6 & shock & 0.000 & 0.000 & 0.180 & 0.114 & 0.000 & 0.706\\
+6 & recovery & 0.000 & 0.000 & 0.000 & 0.415 & 0.217 & 0.368\\
+\bottomrule
+\end{longtable}
+
+\section{复现实验输出}
+
+本文主结果与增量消融分别对应以下两个独立运行：
+\begin{itemize}
+  \item 完全体：\path{full_expert_20260910_080942}；
+  \item 增量消融：\path{incremental_expert_20260910_002026}。
+\end{itemize}
+关键校验记录显示：四个时距均存在；六个专家均进入完全体；融合权重和为一；配置来源于最终评价之前的开发期。论文派生目录另外保存滚动区间指标、完全体指标、融合权重、增量消融表和数据摘要，便于逐项核对正文数值。
+
+\begin{thebibliography}{99}
+\bibitem{friedman2001} Friedman, J. H. Greedy Function Approximation: A Gradient Boosting Machine. \emph{The Annals of Statistics}, 29(5):1189--1232, 2001.
+\bibitem{chen2016} Chen, T. and Guestrin, C. XGBoost: A Scalable Tree Boosting System. \emph{KDD}, pp. 785--794, 2016.
+\bibitem{cameron2013} Cameron, A. C. and Trivedi, P. K. \emph{Regression Analysis of Count Data}. 2nd ed., Cambridge University Press, 2013.
+\bibitem{hastie1990} Hastie, T. J. and Tibshirani, R. J. \emph{Generalized Additive Models}. Chapman and Hall/CRC, 1990.
+\bibitem{bai2018} Bai, S., Kolter, J. Z., and Koltun, V. An Empirical Evaluation of Generic Convolutional and Recurrent Networks for Sequence Modeling. arXiv:1803.01271, 2018.
+\bibitem{cho2014} Cho, K. et al. Learning Phrase Representations using RNN Encoder--Decoder for Statistical Machine Translation. \emph{EMNLP}, 2014.
+\bibitem{vaswani2017} Vaswani, A. et al. Attention Is All You Need. \emph{NeurIPS}, 2017.
+\bibitem{jacobs1991} Jacobs, R. A., Jordan, M. I., Nowlan, S. J., and Hinton, G. E. Adaptive Mixtures of Local Experts. \emph{Neural Computation}, 3(1):79--87, 1991.
+\bibitem{jordan1994} Jordan, M. I. and Jacobs, R. A. Hierarchical Mixtures of Experts and the EM Algorithm. \emph{Neural Computation}, 6(2):181--214, 1994.
+\bibitem{angelopoulos2023} Angelopoulos, A. N. and Bates, S. A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification. \emph{Foundations and Trends in Machine Learning}, 16(4):494--591, 2023.
+\bibitem{capitaldata} Capital Bikeshare. System Data: Trip History Data. \url{https://capitalbikeshare.com/system-data}. Accessed 2026-09-09.
+\bibitem{openmeteo} Open-Meteo. Historical Weather API. \url{https://github.com/open-meteo/open-meteo/blob/main/openapi/historical-weather.yml}. Accessed 2026-09-09.
+\end{thebibliography}
+
+\end{document}
