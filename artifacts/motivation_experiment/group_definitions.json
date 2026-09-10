@@ -1,0 +1,18 @@
+{
+  "primary_split": "final_eval",
+  "reference_group": "long_dry",
+  "long_dry": "current rain=0 and previous 24h rain sum=0",
+  "recent_rain": "current rain=0; rain in lag 3-12h >= 1.0 mm; lag 1-2h sum=0; previous 24h sum < 5.0 mm",
+  "recovery": "current rain=0; previous 12h rain sum >= 5.0 mm; last positive-rain hour within 3h",
+  "control_variables": "target_time hour-of-day, target_time weekday, target_time month (horizon-specific)",
+  "residual_definition": "actual Y[t+h] minus frozen raw E1 prediction mu_E1_raw_h",
+  "bootstrap": "500 resamples of calendar-week blocks; OLS with hour/weekday/month controls refit per replicate",
+  "rain_source": "capital_open_meteo_historical_weather.csv",
+  "prediction_source": "artifacts/confirmation_inputs/expert_predictions.csv",
+  "random_seed": 20260910,
+  "sample_counts_final_eval": {
+    "long_dry": 3074,
+    "recovery": 248,
+    "recent_rain": 133
+  }
+}

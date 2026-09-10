@@ -1,0 +1,18 @@
+{
+  "status": "completed",
+  "n_rows_final_eval_selected": 3455,
+  "horizons": [
+    1,
+    2,
+    3,
+    6
+  ],
+  "outputs": [
+    "controlled_effects_bootstrap.csv",
+    "group_definitions.json",
+    "manifest.json",
+    "motivation_experiment_report.md",
+    "motivation_sample_final.csv",
+    "raw_group_summary.csv"
+  ]
+}
