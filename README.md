@@ -1,4 +1,4 @@
-# 六专家共享单车需求预测（Six-Expert Bike Demand Forecasting）
+# 专家共享单车需求预测（Six-Expert Bike Demand Forecasting）
 
 本仓库是课程论文与可复现实验代码的最终版。研究任务保持不变：在预测发布时刻（issue time）仅使用当时可获得的信息，预测未来 1、2、3、6 小时的 Capital Bikeshare 小时级取车量。方法采用“先分工、再融合（divide-and-specialize, then fuse）”的六专家体系，避免把需求惯性、天气冲击、雨后恢复与多尺度时序模式全部塞入单一模型。
 
