@@ -45,10 +45,10 @@
 │  ├─ run_incremental_expert_screening.py
 │  ├─ run_full_expert_fusion.py
 │  └─ build_six_expert_paper_assets.py
-├─ paper/
-│  ├─ main.tex                     # LaTeX 论文源码
-│  └─ assets/                      # 正文实际引用的最终图
-└─ output/pdf/final_paper_six_expert.pdf
+└─ paper/
+   ├─ main.tex                     # LaTeX 论文源码
+   └─ assets/                      # 正文实际引用的最终图
+
 ```
 
 `.venv/`、`data/raw/`、新产生的 `runs/`、LaTeX 中间文件均由 `.gitignore` 排除。它们可以保留在本机，但不会进入版本库。
