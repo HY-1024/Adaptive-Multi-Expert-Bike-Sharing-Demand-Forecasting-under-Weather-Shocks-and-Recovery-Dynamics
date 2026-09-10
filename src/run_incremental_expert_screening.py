@@ -241,7 +241,7 @@ def add_mser_features(frame: pd.DataFrame, h: int, variant: str) -> pd.DataFrame
         out[f"event_duration_decay_tau{int(tau)}"] = out["ended_duration_log"] * decay
         out[f"event_cd_decay_tau{int(tau)}"] = out["ended_cum_log"] * out["ended_duration_log"] * decay
         memory = np.zeros(len(out), dtype=float)
-        if variant in {"memory", "full"}:
+        if variant in {"memory", "full", "history_only"}:
             for lag in range(1, 73):
                 memory += np.log1p(out[f"rain_lag_{lag}"].fillna(0.0).to_numpy(float)) * math.exp(-(lag + h) / tau)
         out[f"continuous_memory_tau{int(tau)}"] = memory
@@ -249,17 +249,11 @@ def add_mser_features(frame: pd.DataFrame, h: int, variant: str) -> pd.DataFrame
 
 
 def mser_cols(h: int, variant: str) -> Tuple[List[str], List[str]]:
-    numeric = public_numeric_cols(h) + [
-        "rain_indicator",
-        "rain_now_log",
-        "ongoing_rain_duration_log",
-        "ongoing_rain_cum_log",
-        "ended_duration_log",
-        "ended_cum_log",
-        "hours_since_end_log",
-    ]
+    numeric = public_numeric_cols(h) + ["ended_duration_log", "ended_cum_log", "hours_since_end_log"]
+    if variant != "history_only":
+        numeric += ["rain_indicator", "rain_now_log", "ongoing_rain_duration_log", "ongoing_rain_cum_log"]
     numeric += [f"event_cum_decay_tau{tau}" for tau in [3, 12, 36]]
-    if variant in {"memory", "full"}:
+    if variant in {"memory", "full", "history_only"}:
         numeric += [f"continuous_memory_tau{tau}" for tau in [3, 12, 36]]
     if variant == "full":
         numeric += [f"event_duration_decay_tau{tau}" for tau in [3, 12, 36]]

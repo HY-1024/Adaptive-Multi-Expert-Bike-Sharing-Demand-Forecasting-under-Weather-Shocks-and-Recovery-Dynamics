@@ -327,11 +327,6 @@ def main() -> None:
     corr = pd.read_csv(INPUT_DIR / "incremental_residual_correlation.csv")
 
     intervals = add_rolling_intervals(pred)
-    int_metrics = interval_metrics(intervals)
-    int_metrics.to_csv(TABLE_DIR / "rolling_interval_metrics.csv", index=False, encoding="utf-8-sig")
-    full_metrics.to_csv(TABLE_DIR / "full_expert_final_metrics.csv", index=False, encoding="utf-8-sig")
-    weights.to_csv(TABLE_DIR / "full_expert_weights.csv", index=False, encoding="utf-8-sig")
-    ablation.to_csv(TABLE_DIR / "incremental_ablation.csv", index=False, encoding="utf-8-sig")
 
     data_summary = {
         "source": "Capital Bikeshare official monthly trip-history ZIPs with Open-Meteo historical weather reconstruction",
@@ -350,16 +345,7 @@ def main() -> None:
 
     figure_data_overview(frame)
     figure_incremental_ablation(ablation)
-    figure_full_state_mae(full_metrics)
-    figure_global_weights(weights)
-    figure_state_weights(weights)
-    figure_residual_correlations(corr)
-    figure_event_window(intervals)
-    figure_interval_coverage(int_metrics)
-    figure_model_comparison(full_metrics, incremental_metrics)
-    figure_monthly_error(intervals)
-
-    print(json.dumps({"paper_dir": str(PAPER_DIR), "figures": 10, "tables": 6, "summary": data_summary}, ensure_ascii=False, indent=2))
+    print(json.dumps({"paper_dir": str(PAPER_DIR), "figures": 2, "tables": 0, "summary": data_summary}, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,9 @@
+{
+  "source_run": "confirmation_final2_20260910_111616",
+  "source_manifest": "C:\\Users\\贺严\\Desktop\\zml_homework\\runs\\confirmation_final2_20260910_111616\\manifest.json",
+  "published_figures": {
+    "01_fusion_objectives.png": "11_fusion_objectives.png",
+    "02_leave_one_out.png": "12_leave_one_out.png",
+    "03_state_intervals.png": "13_state_intervals.png"
+  }
+}

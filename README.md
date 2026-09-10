@@ -19,12 +19,12 @@
 
 | Horizon | MAE | RMSE |
 |---:|---:|---:|
-| 1 h | 75.648 | 116.867 |
-| 2 h | 98.051 | 155.948 |
-| 3 h | 117.206 | 187.421 |
-| 6 h | 130.774 | 205.320 |
+| 1 h | 75.691 | 117.124 |
+| 2 h | 97.794 | 156.000 |
+| 3 h | 116.644 | 187.735 |
+| 6 h | 129.372 | 203.462 |
 
-四时距平均 MAE 为 105.420，比 E1-only 的 153.233 低 31.20%。这里的 “best overall” 仅指本研究已评估配置中的四时距平均 MAE 最低；它不表示每个时距都逐项最优，也不把融合权重解释为因果贡献。
+四时距平均 MAE 为 104.875，比 E1-only 的 153.233 低 31.56%。这里的 “best overall” 仅指本研究已评估配置中的四时距平均 MAE 最低；它不表示每个时距都逐项最优，也不把融合权重解释为因果贡献。
 
 ## 目录
 
@@ -36,7 +36,9 @@
 │  ├─ README.md
 │  ├─ raw/                         # 本机原始月度 ZIP，Git 忽略
 │  └─ processed/capital_hourly/    # 可复现实验的小时级输入
-├─ artifacts/figure_inputs/        # 论文作图所需的精简结果数据
+├─ artifacts/figure_inputs/        # 基础论文作图所需的精简结果数据
+├─ artifacts/confirmation_inputs/  # 冻结专家预测与确认实验输入
+├─ artifacts/confirmation_results/ # LOO、融合目标、状态区间确认结果
 ├─ src/
 │  ├─ capital_data_and_statistics.py
 │  ├─ six_expert_statistical_core.py
@@ -45,8 +47,7 @@
 │  └─ build_six_expert_paper_assets.py
 ├─ paper/
 │  ├─ main.tex                     # LaTeX 论文源码
-│  ├─ assets/                      # 最终图
-│  └─ tables/                      # 正文复核表
+│  └─ assets/                      # 正文实际引用的最终图
 └─ output/pdf/final_paper_six_expert.pdf
 ```
 
@@ -95,6 +96,14 @@ python src/run_full_expert_fusion.py --max-epochs 60 --patience 10
 python src/build_six_expert_paper_assets.py
 ```
 
+最新确认实验的冻结输入和结果已分别保存到 `artifacts/confirmation_inputs/` 与 `artifacts/confirmation_results/`。如需从某次已完成运行重新发布确认结果，可执行：
+
+```powershell
+python src/publish_confirmation_results.py runs/confirmation_final2_20260910_111616
+```
+
+该确认运行包含 LOO、四种融合目标、全局/状态区间和 E3 结构敏感性；多随机种子不属于本版实验范围。
+
 编译论文：
 
 ```powershell
@@ -113,4 +122,4 @@ latexmk -xelatex -interaction=nonstopmode -halt-on-error main.tex
 
 ## 论文
 
-最终中文论文采用中英文混合术语，完整报告问题重构、六专家分工、18 个候选设计、增量消融、完全体融合、状态权重、残差相关性和滚动经验区间。LaTeX 源码位于 [`paper/main.tex`](paper/main.tex)，成品位于 [`output/pdf/final_paper_six_expert.pdf`](output/pdf/final_paper_six_expert.pdf)。
+最终中文论文采用中英文混合术语，完整报告问题重构、六专家分工、18 个候选设计、增量消融、LOO、融合目标敏感性、完全体融合和状态区间校准。LaTeX 源码位于 [`paper/main.tex`](paper/main.tex)，成品位于 [`output/pdf/final_paper_six_expert.pdf`](output/pdf/final_paper_six_expert.pdf)。

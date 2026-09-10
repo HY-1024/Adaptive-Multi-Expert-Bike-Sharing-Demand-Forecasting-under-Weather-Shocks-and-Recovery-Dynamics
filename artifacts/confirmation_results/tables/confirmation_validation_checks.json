@@ -1,0 +1,24 @@
+{
+  "run_id": "confirmation_final2_20260910_111616",
+  "horizons": [
+    1,
+    2,
+    3,
+    6
+  ],
+  "input_rows": 17543,
+  "selected_objective_from_screening_dev": "mae",
+  "primary_objective_for_confirmation": "mse",
+  "final_eval_used_for_selection": false,
+  "single_seed_deep_predictions_reused": true,
+  "deep_experts_retrained": false,
+  "loo_refits_calibration_and_fusion": true,
+  "interval_scores_require_target_time_le_issue_time": true,
+  "e3_variants": [
+    "multi_scale",
+    "memory",
+    "full",
+    "history_only"
+  ],
+  "weights_sum_to_one": true
+}
